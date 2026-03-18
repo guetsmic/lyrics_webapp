@@ -148,16 +148,18 @@
   #editor-page.open { transform: translateX(0); }
 
   #editor-nav {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px 14px; padding-top: calc(12px + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
+  #editor-nav-row1 { display: flex; align-items: center; gap: 6px; }
   #editor-title-input {
-    flex: 1; background: none; border: none; outline: none;
-    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
-    color: var(--text); min-width: 0;
+    width: 100%; background: none; border: none; outline: none;
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
+    color: var(--text); padding: 0 2px 6px;
+    border-bottom: 1px solid var(--border);
   }
-  #editor-actions { display: flex; gap: 6px; }
+  #editor-title-input:focus { border-bottom-color: var(--accent); }
 
   /* Editor pages (lyrics / audio) */
   #editor-pages {
@@ -210,24 +212,26 @@
   #editor-albums-bar::-webkit-scrollbar { display: none; }
 
   /* ── AUDIO PANEL ── */
-  #audio-panel { padding: 12px 12px 20px; }
+  #audio-page-inner { overflow-y: auto; }
+  #audio-panel { padding: 16px 14px 30px; }
   .audio-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px; padding: 4px 4px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 16px;
   }
-  .audio-header h3 { font-size: 16px; font-weight: 700; }
-  .audio-actions { display: flex; gap: 8px; }
+  .audio-header-top { display: flex; align-items: center; justify-content: space-between; }
+  .audio-header h3 { font-size: 17px; font-weight: 800; }
+  .audio-actions { display: flex; gap: 10px; }
 
   .audio-btn {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 12px; padding: 8px 14px;
-    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    border-radius: 14px; padding: 14px 0; flex: 1;
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
     color: var(--text); cursor: pointer; transition: all 0.15s;
   }
   .audio-btn:active { transform: scale(0.95); }
   .audio-btn.recording { background: rgba(255,77,109,0.15); border-color: var(--red); color: var(--red); }
-  .audio-btn.accent { background: rgba(124,77,255,0.15); border-color: var(--accent); color: var(--accent2); }
+  .audio-btn.accent { background: rgba(124,77,255,0.2); border-color: var(--accent); color: var(--accent2); font-size: 15px; }
 
   .recording-indicator {
     display: flex; align-items: center; gap: 10px;
@@ -458,15 +462,18 @@
 <!-- SONG EDITOR -->
 <div id="editor-page">
   <div id="editor-nav">
-    <div class="icon-btn" onclick="closeEditor()">←</div>
-    <input id="editor-title-input" placeholder="Titre..." />
-    <div id="view-toggle">
-      <button class="view-btn active" onclick="setViewMode('edit')">Éditer</button>
-      <button class="view-btn" onclick="setViewMode('view')">Lire</button>
+    <div id="editor-nav-row1">
+      <div class="icon-btn" onclick="closeEditor()">←</div>
+      <div style="flex:1"></div>
+      <div id="view-toggle">
+        <button class="view-btn active" onclick="setViewMode('edit')">Éditer</button>
+        <button class="view-btn" onclick="setViewMode('view')">Lire</button>
+      </div>
+      <div class="icon-btn" onclick="openAlbumAssign()" title="Albums">💿</div>
+      <div class="icon-btn" id="finished-btn" onclick="toggleFinished()" title="Terminée">✓</div>
+      <div class="icon-btn" onclick="openSongMenu()" title="Plus">⋯</div>
     </div>
-    <div class="icon-btn" onclick="openAlbumAssign()" title="Albums">💿</div>
-    <div class="icon-btn" id="finished-btn" onclick="toggleFinished()" title="Terminée">✓</div>
-    <div class="icon-btn" onclick="openSongMenu()" title="Plus">⋯</div>
+    <input id="editor-title-input" placeholder="Titre de la chanson..." />
   </div>
   <div id="editor-albums-bar"></div>
   <div id="editor-dots">
@@ -487,11 +494,11 @@
     <div class="editor-page-inner" id="audio-page-inner">
       <div id="audio-panel">
         <div class="audio-header">
-          <h3>Audio</h3>
+          <div class="audio-header-top"><h3>Audio</h3></div>
           <div class="audio-actions">
             <button class="audio-btn accent" id="record-btn" onclick="toggleRecord()">🎤 Enregistrer</button>
             <label class="audio-btn accent" style="cursor:pointer">
-              📁 MP3
+              📁 Importer
               <input type="file" accept="audio/*" multiple style="display:none" onchange="importAudio(this)">
             </label>
           </div>
@@ -864,16 +871,23 @@ function editorGoTo(page) {
   if (page === 1) saveTitleNow();
 }
 
-// Touch swipe for editor pages
+// Touch swipe for editor pages (horizontal only, not vertical scroll)
 let editorTouchStart = null;
+let editorTouchStartY = null;
 document.getElementById('editor-pages').addEventListener('touchstart', e => {
   editorTouchStart = e.touches[0].clientX;
+  editorTouchStartY = e.touches[0].clientY;
 }, {passive: true});
 document.getElementById('editor-pages').addEventListener('touchend', e => {
   if (!editorTouchStart) return;
   const dx = e.changedTouches[0].clientX - editorTouchStart;
-  if (Math.abs(dx) > 60) editorGoTo(dx < 0 ? 1 : 0);
+  const dy = e.changedTouches[0].clientY - editorTouchStartY;
+  // Only switch page if horizontal swipe is dominant (not a scroll)
+  if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    editorGoTo(dx < 0 ? 1 : 0);
+  }
   editorTouchStart = null;
+  editorTouchStartY = null;
 }, {passive: true});
 
 function renderEditorAlbums(song) {
@@ -1277,6 +1291,7 @@ window.addEventListener('popstate', () => {
 
 load();
 renderSongs();
+renderAlbums();
 // Push initial history state for back button support
 history.pushState(null, '');
 
